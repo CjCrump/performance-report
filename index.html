@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Landing Page Performance Report</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <nav class="topbar">
+    <a class="brand" href="/">Chance IT</a>
+    <a class="back" href="/#demos">← Back to Portfolio</a>
+  </nav>
+
+  <main class="wrap">
+    <header class="hero">
+      <h1>Landing Page Performance Report</h1>
+      <p>
+        Paste a link to your landing page. This tool runs a mobile-first Lighthouse audit
+        and returns actionable scores + Core Web Vitals (when available).
+      </p>
+    </header>
+
+    <section class="panel">
+      <form id="report-form" class="form">
+        <label for="url" class="label">Website / Landing Page URL</label>
+        <div class="row">
+          <input
+            id="url"
+            name="url"
+            type="url"
+            placeholder="https://example.com"
+            autocomplete="url"
+            required
+          />
+          <button id="run-btn" type="submit">Run Report</button>
+        </div>
+        <p class="hint">
+          Tip: Use the full URL with https://
+        </p>
+
+        <p id="status" class="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section id="results" class="results hidden">
+      <h2>Results</h2>
+
+      <div class="score-grid">
+        <article class="score-card">
+          <h3>Performance</h3>
+          <div class="big" id="perfScore">—</div>
+        </article>
+
+        <article class="score-card">
+          <h3>Accessibility</h3>
+          <div class="big" id="a11yScore">—</div>
+        </article>
+
+        <article class="score-card">
+          <h3>Best Practices</h3>
+          <div class="big" id="bpScore">—</div>
+        </article>
+
+        <article class="score-card">
+          <h3>SEO</h3>
+          <div class="big" id="seoScore">—</div>
+        </article>
+      </div>
+
+      <div class="cwv">
+        <h3>Core Web Vitals (Field data if available)</h3>
+
+        <div class="cwv-grid">
+          <div class="cwv-item">
+            <span class="cwv-label">LCP</span>
+            <span class="cwv-value" id="lcp">—</span>
+          </div>
+          <div class="cwv-item">
+            <span class="cwv-label">INP</span>
+            <span class="cwv-value" id="inp">—</span>
+          </div>
+          <div class="cwv-item">
+            <span class="cwv-label">CLS</span>
+            <span class="cwv-value" id="cls">—</span>
+          </div>
+        </div>
+
+        <p class="hint" id="cwvNote"></p>
+      </div>
+
+      <div class="opps">
+        <h3>Top Opportunities</h3>
+        <ul id="oppsList" class="opps-list"></ul>
+      </div>
+
+      <div class="actions">
+        <a class="primary" href="/#contact">Want help fixing this? Contact me</a>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
