@@ -26,6 +26,14 @@ const cwvNote = document.getElementById("cwvNote");
 // opportunities
 const oppsList = document.getElementById("oppsList");
 
+// ======================
+// MODE SWITCH
+// demo = uses mock data (GitHub Pages friendly)
+// live = calls a backend endpoint (we’ll add later)
+// ======================
+const MODE = "demo"; // change to "live" later
+const LIVE_ENDPOINT = ""; // set later (ex: https://your-worker.../psi)
+
 /** Basic URL sanity check */
 function normalizeUrl(raw) {
   const trimmed = raw.trim();
@@ -128,41 +136,58 @@ form.addEventListener("submit", async (e) => {
   setLoading(true);
   setStatus("Running mobile Lighthouse audit…", "");
 
-  try {
-    const res = await fetch(`/.netlify/functions/psi?url=${encodeURIComponent(normalized)}`);
+    try {
+    let data;
 
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(errText || `Request failed: ${res.status}`);
+    if (MODE === "demo") {
+      // Simulate a real network call (feels legit in demos)
+      await new Promise((r) => setTimeout(r, 800));
+      data = getMockPsiResponse(normalized);
+      setStatus("✅ Demo report complete (mock data).", "good");
+    } else {
+      if (!LIVE_ENDPOINT) {
+        throw new Error("Live mode is not configured yet.");
+      }
+
+      setStatus("Running live mobile Lighthouse audit…", "");
+      const res = await fetch(`${LIVE_ENDPOINT}?url=${encodeURIComponent(normalized)}`);
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || `Request failed: ${res.status}`);
+      }
+
+      data = await res.json();
+      setStatus("✅ Live report complete.", "good");
     }
 
-    const data = await res.json();
+    // ======================
+    // Render results (same for demo + live)
+    // ======================
 
-    // Lighthouse scores
     const lh = data?.lighthouseResult;
     perfScore.textContent = toPercent(lh?.categories?.performance?.score);
     a11yScore.textContent = toPercent(lh?.categories?.accessibility?.score);
     bpScore.textContent = toPercent(lh?.categories?.["best-practices"]?.score);
     seoScore.textContent = toPercent(lh?.categories?.seo?.score);
 
-    // Core Web Vitals (Field)
+    // Core Web Vitals (Field-style object)
     const metrics = data?.loadingExperience?.metrics;
-    // LCP is in ms (show seconds for readability)
+
     const lcp = metrics?.LARGEST_CONTENTFUL_PAINT_MS;
-    const inp = metrics?.INTERACTION_TO_NEXT_PAINT; // may appear depending on API response
+    const inp = metrics?.INTERACTION_TO_NEXT_PAINT;
     const cls = metrics?.CUMULATIVE_LAYOUT_SHIFT_SCORE;
 
-    // If INP isn’t present, you might see FID on older data; we’ll handle that gracefully.
-    const fid = metrics?.FIRST_INPUT_DELAY_MS;
-
     lcpEl.textContent = lcp ? formatCwvMetric(lcp, "s") : "—";
-    inpEl.textContent = inp ? formatCwvMetric(inp, "ms") : (fid ? formatCwvMetric(fid, "ms") : "—");
+    inpEl.textContent = inp ? formatCwvMetric(inp, "ms") : "—";
     clsEl.textContent = cls ? formatCwvMetric(cls, "raw") : "—";
 
-    // Note to explain missing field data
     if (!metrics) {
       cwvNote.textContent =
         "Field (real-user) data was not available for this URL. Scores above are still useful as a lab audit.";
+    } else if (MODE === "demo") {
+      cwvNote.textContent =
+        "Demo mode: values shown are realistic mock data to preview the report layout.";
     } else {
       cwvNote.textContent =
         "Field data availability depends on whether Chrome has enough real-user samples for this page/origin.";
@@ -170,6 +195,7 @@ form.addEventListener("submit", async (e) => {
 
     // Opportunities
     const opps = getTopOpportunities(lh);
+    oppsList.innerHTML = "";
     opps.forEach((t) => {
       const li = document.createElement("li");
       li.textContent = t;
@@ -177,10 +203,59 @@ form.addEventListener("submit", async (e) => {
     });
 
     results.classList.remove("hidden");
-    setStatus("✅ Report complete.", "good");
   } catch (err) {
-    setStatus(`❌ ${err.message || "Something went wrong. Try again."}`, "bad");
-  } finally {
+  // Prevent raw HTML (like 404 pages) from showing in the UI
+  const raw = String(err?.message || "Something went wrong. Try again.");
+
+  const safe = raw
+    .replace(/<[^>]*>/g, "")     // strip HTML tags
+    .replace(/\s+/g, " ")        // collapse whitespace
+    .trim()
+    .slice(0, 220);              // keep it short for UX
+
+  setStatus(`❌ ${safe}`, "bad");
+}
+finally {
     setLoading(false);
   }
 });
+
+// ======================
+// Demo Mode: Mock PSI/Lighthouse response
+// ======================
+function getMockPsiResponse(url) {
+  // Slightly vary scores based on URL length so it doesn’t feel “static”
+  const seed = Math.min(20, url.length % 20);
+
+  const clamp01 = (n) => Math.max(0, Math.min(1, n));
+  const score01 = (base) => clamp01((base + seed / 100));
+
+  return {
+    lighthouseResult: {
+      categories: {
+        performance: { score: score01(0.72) },      // ~72-92
+        accessibility: { score: score01(0.88) },    // ~88-100
+        "best-practices": { score: score01(0.86) }, // ~86-100
+        seo: { score: score01(0.84) },              // ~84-100
+      },
+      audits: {
+        "largest-contentful-paint": { score: 0.55, title: "Improve Largest Contentful Paint" },
+        "render-blocking-resources": { score: 0.65, title: "Eliminate render-blocking resources" },
+        "unused-javascript": { score: 0.7, title: "Reduce unused JavaScript" },
+        "unused-css-rules": { score: 0.75, title: "Reduce unused CSS" },
+        "offscreen-images": { score: 0.8, title: "Defer offscreen images" },
+        "uses-text-compression": { score: 0.85, title: "Enable text compression" }
+      }
+    },
+
+    // Field-style metrics shape that matches your renderer
+    loadingExperience: {
+      metrics: {
+        LARGEST_CONTENTFUL_PAINT_MS: { percentile: 2500 },  // 2.5s
+        INTERACTION_TO_NEXT_PAINT: { percentile: 190 },     // 190ms
+        CUMULATIVE_LAYOUT_SHIFT_SCORE: { percentile: 8 }    // interpret as 0.08 in copy later if desired
+      }
+    }
+  };
+}
+

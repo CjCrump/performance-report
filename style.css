@@ -150,3 +150,11 @@ button:hover {
 }
 
 .primary:hover { background: #000; color: #fff; }
+
+.badge{
+  display:inline-block;
+  margin:12px auto 0;
+  padding:6px 10px;
+  border:1px solid #222;
+  font-size:0.9rem;
+}
